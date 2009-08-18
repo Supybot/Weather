@@ -38,6 +38,25 @@ from supybot.commands import *
 import supybot.ircutils as ircutils
 import supybot.callbacks as callbacks
 
+simplejson = None
+
+try:
+    import json as simplejson
+except ImportError:
+    pass
+
+try:
+    # The 3rd party simplejson module was included in Python 2.6 and renamed to
+    # json.  Unfortunately, this conflicts with the 3rd party json module.
+    # Luckily, the 3rd party json module has a different interface so we test
+    # to make sure we aren't using it.
+    if simplejson is None or hasattr(simplejson, 'read'):
+        import simplejson
+except ImportError:
+    raise callbacks.Error, \
+            'You need Python2.6 or the simplejson module installed to use ' \
+            'this plugin.  Download the module at ' \
+            '<http://undefined.org/python/#simplejson>.'
 
 unitAbbrevs = utils.abbrev(['Fahrenheit', 'Celsius', 'Centigrade', 'Kelvin'])
 unitAbbrevs['C'] = 'Celsius'
@@ -278,14 +297,17 @@ class Weather(callbacks.Plugin):
             irc.errorPossibleBug('The format of the page was odd.')
     ham = wrap(ham, ['text'])
 
-    _cnnUrl = 'http://weather.cnn.com/weather/search?wsearch='
-    _cnnFTemp = re.compile(r'(-?\d+)(&deg;)(F)</span>', re.I | re.S)
-    _cnnCond = re.compile(r'align="center"><b>([^<]+)</b></div></td>',
+    _cnnSearchUrl = 'http://weather.cnn.com/weather/citySearch?' \
+                    'search_term=%s&mode=json&filter=true'
+    _cnnUrl='http://weather.cnn.com/weather/forecast.jsp?locCode=%s&zipCode=%s'
+    _cnnFTemp = re.compile(r'<div class="cnnWeatherTempCurrent">' \
+                           r'(-?\d+)(&deg;)</div>',
+                           re.I | re.S)
+    _cnnCond = re.compile(r'<span class="cnnWeatherConditionCurrent">' \
+                          r'([^<]+)</span>',
                           re.I | re.S)
-    _cnnHumid = re.compile(r'Rel. Humidity: <b>(\d+%)</b>', re.I | re.S)
-    _cnnWind = re.compile(r'Wind: <b>([^<]+)</b>', re.I | re.S)
-    _cnnLoc = re.compile(r'<title>([^<]+)</title>', re.I | re.S)
-    _cnnMultiLoc = re.compile(r'href="([^f]+forecast.jsp[^"]+)', re.I)
+    _cnnHumid = re.compile(r'Humidity: </b>(\d+%)', re.I | re.S)
+    _cnnWind = re.compile(r'Wind: </b>([^<\n\r]+)', re.I | re.S)
     # Certain countries are expected to use a standard abbreviation
     # The weather we pull uses weird codes.  Map obvious ones here.
     _cnnCountryMap = {'uk': 'en', 'de': 'ge'}
@@ -308,27 +330,22 @@ class Weather(callbacks.Plugin):
         else:
             #We received a single argument.  Zipcode or station id.
             loc = loc.replace(',', '')
-        url = '%s%s' % (self._cnnUrl, utils.web.urlquote(loc))
-        text = utils.web.getUrl(url, headers=self.headers)
-        if 'No search results' in text or \
-           'does not match a zip code' in text:
+        url = self._cnnSearchUrl % (utils.web.urlquote(loc))
+        json = simplejson.loads(utils.web.getUrl(url, headers=self.headers))
+        if not json:
             self._noLocation()
-        elif 'several matching locations for' in text:
-            m = self._cnnMultiLoc.search(text)
-            if m:
-                text = utils.web.getUrl(m.group(1), headers=self.headers)
-            else:
-                self._noLocation()
-        location = self._cnnLoc.search(text)
+        json = json[0]
+        url = self._cnnUrl % (json['locCode'], json['zip'])
+        text = utils.web.getUrl(url, headers=self.headers)
+        location = ', '.join([json['city'], json['stateOrCountry']])
         temp = self._cnnFTemp.search(text)
         conds = self._cnnCond.search(text)
         humidity = self._cnnHumid.search(text)
         wind = self._cnnWind.search(text)
         convert = self.registryValue('convert', msg.args[0])
         if location and temp:
-            location = location.group(1)
-            location = location.split('-')[-1].strip()
-            (temp, deg, unit) = temp.groups()
+            (temp, deg) = temp.groups()
+            unit = 'F'
             if convert:
                 temp = self._getTemp(float(temp), deg, unit, msg.args[0])
             else:
