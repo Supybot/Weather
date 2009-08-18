@@ -30,7 +30,9 @@
 import re
 
 import rssparser
-import BeautifulSoup
+# Specifically use our local copy since later versions changed their interface
+# and (depending on the version) don't work as well
+from local import BeautifulSoup
 
 import supybot.conf as conf
 import supybot.utils as utils
@@ -392,6 +394,7 @@ class Weather(callbacks.Plugin):
             m = self._wunderSevere.search(text)
             if m:
                 severe = ircutils.bold(format('  %s', m.group(1)))
+            text = text.replace("&#176;", "\xb0") # needed as the overridden htmlToText function doesn't replace it
             soup = BeautifulSoup.BeautifulSoup()
             soup.feed(text)
             # Get the table with all the weather info
