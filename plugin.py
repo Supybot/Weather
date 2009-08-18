@@ -1,5 +1,5 @@
 ###
-# Copyright (c) 2005, James Vega
+# Copyright (c) 2005,2009, James Vega
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -128,25 +128,21 @@ class Weather(callbacks.Plugin):
     _getTemp = staticmethod(_getTemp)
 
     _hamLoc = re.compile(
-        r'<td><font size="4" face="arial"><b>'
-        r'([^,]+), ([^,]+),(.*?)</b></font></td>', re.I)
+        r'<span class="Place">([^,]+), ([^,\n]+),(.*?)</span>', re.I)
     _interregex = re.compile(
-        r'<td><font size="4" face="arial"><b>'
-        r'([^,]+), (.*?)</b></font></td>', re.I)
+        r'<span class="Place">([^,]+), ([^,\n]+?)</span>', re.I)
     _hamCond = re.compile(
-        r'<td width="100%" colspan="2" align="center"><strong>'
-        r'<font face="arial"[^>]+>([^<]+)</font></strong></td>', re.I)
+        r'<td width="100%" colspan="2" align="center" class="Wx">([^<]+)</td>',
+        re.I)
     _hamTemp = re.compile(
-        r'<td valign="top" align="right"><strong><font face="arial"[^>]+>'
-        r'(-?\d+)(.*?)(F|C)</font></strong></td>', re.I)
+        r'<td valign="top" align="right" class="Temp">(-?\d+)(.*?)(F|C)</td>',
+        re.I)
     _hamChill = re.compile(
-        r'Wind Chill:</font></strong></td>\s+<td align="right">'
-        r'<font face="arial"[^>]+>([^N][^<]+)</font></td>',
-         re.I | re.S)
+        r'Wind Chill:</td>\s+<td align="right" class="Value">([^N][^<]+)</td>',
+        re.I | re.S)
     _hamHeat = re.compile(
-        r'Heat Index:</font></strong></td>\s+<td align="right">'
-        r'<font face="arial"[^>]+>([^N][^<]+)</font></td>',
-         re.I | re.S)
+        r'Heat Index:</td>\s+<td align="right" class="Value">([^N][^<]+)</td>',
+        re.I | re.S)
     _hamMultiLoc = re.compile(
         r'Select from one of[^<]+</b></font></td></tr>\s*<tr><td><font[^>]+>'
         r'\s*<a href="(/cgi-bin/hw3[^"]+)">', re.I | re.S)
@@ -164,7 +160,7 @@ class Weather(callbacks.Plugin):
                        'nu', 'on', 'pe', 'qc', 'sk', 'yk'])
     # Certain countries are expected to use a standard abbreviation
     # The weather we pull uses weird codes.  Map obvious ones here.
-    _hamCountryMap = {'uk': 'gb'}
+    _hamCountryMap = {'uk': 'gb', 'argentina': 'ar'}
     def ham(self, irc, msg, args, loc):
         """<US zip code | US/Canada city, state | Foreign city, country>
 
@@ -181,6 +177,7 @@ class Weather(callbacks.Plugin):
             state = loc.pop().lower()
             city = '+'.join(loc)
             city = city.rstrip(',').lower()
+            city = city.replace(' ', '+')
             #We must break the States up into two sections.  The US and
             #Canada are the only countries that require a State argument.
             if state in self._realStates:
@@ -212,6 +209,10 @@ class Weather(callbacks.Plugin):
             html = utils.web.getUrl(url, headers=self.headers)
             if 'was not found' in html:
                 self._noLocation()
+
+        # ham seems to automatically return a location for duplicate names with
+        # no list of other possibilities anymore, so this code may not be
+        # needed
         if 'Multiple Locations for' in html:
             m = self._hamMultiLoc.search(html)
             if m:
@@ -263,7 +264,7 @@ class Weather(callbacks.Plugin):
                 if tempsplit:
                     (heat, deg, unit) = tempsplit.groups()
                     if convert:
-                        heat = self._getTemp(float(heat), deg, unit,msg.args[0])
+                        heat= self._getTemp(float(heat), deg, unit,msg.args[0])
             if float(heat[:-2]) > float(temp[:-2]):
                 index = format(' (Heat Index: %s)', heat)
         if temp and conds and city and state:
@@ -414,7 +415,7 @@ class Weather(callbacks.Plugin):
             if location and temp:
                 (temp, deg, unit) = temp.split()[3:] # We only want temp format
                 if convert:
-                    temp = Weather._getTemp(float(temp), deg, unit, msg.args[0])
+                    temp= Weather._getTemp(float(temp), deg, unit, msg.args[0])
                 else:
                     temp = deg.join((temp, unit))
                 resp = ['The current temperature in %s is %s (%s).' %\
