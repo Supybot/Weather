@@ -173,69 +173,17 @@ class Weather(callbacks.Plugin):
     _hamMultiLoc = re.compile(
         r'Select from one of[^<]+</b></font></td></tr>\s*<tr><td><font[^>]+>'
         r'\s*<a href="(/cgi-bin/hw3[^"]+)">', re.I | re.S)
-    # States
-    _realStates = set(['ak', 'al', 'ar', 'az', 'ca', 'co', 'ct',
-                       'dc', 'de', 'fl', 'ga', 'hi', 'ia', 'id',
-                       'il', 'in', 'ks', 'ky', 'la', 'ma', 'md',
-                       'me', 'mi', 'mn', 'mo', 'ms', 'mt', 'nc',
-                       'nd', 'ne', 'nh', 'nj', 'nm', 'nv', 'ny',
-                       'oh', 'ok', 'or', 'pa', 'ri', 'sc', 'sd',
-                       'tn', 'tx', 'ut', 'va', 'vt', 'wa', 'wi',
-                       'wv', 'wy'])
-    # Provinces.  (Province being a metric state measurement mind you. :D)
-    _fakeStates = set(['ab', 'bc', 'mb', 'nb', 'nf', 'ns', 'nt',
-                       'nu', 'on', 'pe', 'qc', 'sk', 'yk'])
-    # Certain countries are expected to use a standard abbreviation
-    # The weather we pull uses weird codes.  Map obvious ones here.
-    _hamCountryMap = {'uk': 'gb', 'argentina': 'ar'}
     def ham(self, irc, msg, args, loc):
         """<US zip code | US/Canada city, state | Foreign city, country>
 
         Returns the approximate weather conditions for a given city.
         """
-        #If we received more than one argument, then we have received
-        #a city and state argument that we need to process.
-        if ' ' in loc:
-            #If we received more than 1 argument, then we got a city with a
-            #multi-word name.  ie ['Garden', 'City', 'KS'] instead of
-            #['Liberal', 'KS'].  We join it together with a + to pass
-            #to our query
-            loc = utils.str.rsplit(loc, None, 1)
-            state = loc.pop().lower()
-            city = '+'.join(loc)
-            city = city.rstrip(',').lower()
-            city = city.replace(' ', '+')
-            #We must break the States up into two sections.  The US and
-            #Canada are the only countries that require a State argument.
-            if state in self._realStates:
-                country = 'us'
-            elif state in self._fakeStates:
-                country = 'ca'
-            else:
-                country = state
-                state = ''
-            if country in self._hamCountryMap.keys():
-                country = self._hamCountryMap[country]
-            url = 'http://www.hamweather.net/cgi-bin/hw3/hw3.cgi?' \
-                  'pass=&dpp=&forecast=zandh&config=&' \
-                  'place=%s&state=%s&country=%s' % (city, state, country)
-            html = utils.web.getUrl(url, headers=self.headers)
-            if 'was not found' in html:
-                url = 'http://www.hamweather.net/cgi-bin/hw3/hw3.cgi?' \
-                      'pass=&dpp=&forecast=zandh&config=&' \
-                      'place=%s&state=&country=%s' % (city, state)
-                html = utils.web.getUrl(url, headers=self.headers)
-                if 'was not found' in html: # Still.
-                    self._noLocation()
-        #We received a single argument.  Zipcode or station id.
-        else:
-            zip = loc.replace(',', '')
-            zip = zip.lower()
-            url = 'http://www.hamweather.net/cgi-bin/hw3/hw3.cgi?' \
-                  'config=&forecast=zandh&pands=%s&Submit=GO' % zip
-            html = utils.web.getUrl(url, headers=self.headers)
-            if 'was not found' in html:
-                self._noLocation()
+        url = 'http://www.hamweather.net/cgi-bin/hw3/hw3.cgi?' \
+              'config=&forecast=zandh&pands=%s&Submit=GO' % \
+              utils.web.urlquote(loc.lower())
+        html = utils.web.getUrl(url, headers=self.headers)
+        if 'was not found' in html:
+            self._noLocation()
 
         # ham seems to automatically return a location for duplicate names with
         # no list of other possibilities anymore, so this code may not be

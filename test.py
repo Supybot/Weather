@@ -1,5 +1,5 @@
 ###
-# Copyright (c) 2005, James Vega
+# Copyright (c) 2005,2009, James Vega
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -42,7 +42,6 @@ class WeatherTestCase(PluginTestCase):
             self.assertNotError('ham Munich, de')
             self.assertNotError('ham Tucson, AZ')
             # "Multiple locations found" test
-            self.assertNotError('ham hell')
             self.assertNotError('ham sandwich')
 
         def testCnn(self):
