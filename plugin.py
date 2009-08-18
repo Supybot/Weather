@@ -109,7 +109,7 @@ class Weather(callbacks.Plugin):
         command = self.getCommandMethod(commandName.split())
         try:
             command(irc, msg, args[:])
-        except NoLocation:
+        except (NoLocation, utils.web.Error):
             self.log.info('%s lookup failed, Trying others.', firstCommand)
             for commandName in self.weatherCommands:
                 if commandName != firstCommand:
