@@ -41,14 +41,17 @@ __version__ = "%%VERSION%%"
 
 __author__ = supybot.authors.unknown
 
+supybot.authors.mtughan = supybot.Author('Michael Tughan', 'mtughan', 'michaelsprogramming@gmail.com')
+
 # This is a dictionary mapping supybot.Author instances to lists of
 # contributions.
 __contributors__ = {
-    supybot.authors.jamessan: ['cnn', 'wunder', 'rsswunder',
+    supybot.authors.jamessan: ['cnn', 'wunder', 'wunder.rss',
                                'temperatureUnit configuration variable',
                                'convert configuration variable'],
     supybot.authors.jemfinch: ['weather'],
     supybot.authors.bwp: ['ham'],
+    supybot.authors.mtughan: ['cnn', 'wunder', 'wunder.rss', 'ham'],
     }
 
 import config
