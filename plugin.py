@@ -77,8 +77,6 @@ class NoLocation(callbacks.Error):
 class Weather(callbacks.Plugin):
     weatherCommands = ('wunder', 'wunder rss', 'cnn', 'ham')
     threaded = True
-    headers = {'User-agent':
-               'Mozilla/5.0 (compatible; U; utils.web python module)'}
     def callCommand(self, method, irc, msg, *args, **kwargs):
         try:
             super(Weather, self).callCommand(method, irc, msg, *args, **kwargs)
@@ -183,7 +181,7 @@ class Weather(callbacks.Plugin):
         url = 'http://www.hamweather.net/cgi-bin/hw3/hw3.cgi?' \
               'config=&forecast=zandh&pands=%s&Submit=GO' % \
               utils.web.urlquote(loc.lower())
-        html = utils.web.getUrl(url, headers=self.headers)
+        html = utils.web.getUrl(url)
         if 'was not found' in html:
             self._noLocation()
 
@@ -194,7 +192,7 @@ class Weather(callbacks.Plugin):
             m = self._hamMultiLoc.search(html)
             if m:
                 url = 'http://www.hamweather.net/%s' % m.group(1)
-                html = utils.web.getUrl(url, headers=self.headers)
+                html = utils.web.getUrl(url)
             else:
                 self._noLocation()
         headData = self._hamLoc.search(html)
@@ -282,12 +280,12 @@ class Weather(callbacks.Plugin):
             #We received a single argument.  Zipcode or station id.
             loc = loc.replace(',', '')
         url = self._cnnSearchUrl % (utils.web.urlquote(loc))
-        json = simplejson.loads(utils.web.getUrl(url, headers=self.headers))
+        json = simplejson.loads(utils.web.getUrl(url))
         if not json:
             self._noLocation()
         json = json[0]
         url = self._cnnUrl % (json['locCode'], json['zip'])
-        text = utils.web.getUrl(url, headers=self.headers)
+        text = utils.web.getUrl(url)
         location = ', '.join([json['city'], json['stateOrCountry']])
         temp = self._cnnFTemp.search(text)
         conds = self._cnnCond.search(text)
@@ -324,7 +322,7 @@ class Weather(callbacks.Plugin):
             Returns the approximate weather conditions for a given city.
             """
             url = '%s%s' % (self._wunderUrl, utils.web.urlquote(loc))
-            text = utils.web.getUrl(url, headers=Weather.headers)
+            text = utils.web.getUrl(url)
             if 'Search not found' in text or \
                re.search(r'size="2"> Place </font>', text, re.I):
                 Weather._noLocation()
@@ -332,7 +330,7 @@ class Weather(callbacks.Plugin):
                 m = self._backupUrl.search(text)
                 if m is not None:
                     url = 'http://www.wunderground.com' + m.group(1)
-                    text = utils.web.getUrl(url, headers=Weather.headers)
+                    text = utils.web.getUrl(url)
                     self._rss(irc, text)
                     return
             severe = ''
@@ -427,7 +425,7 @@ class Weather(callbacks.Plugin):
             """
             url = self._rsswunderUrl % utils.web.urlquote(loc)
             url = url.replace('%20', '+')
-            text = utils.web.getUrl(url, headers=Weather.headers)
+            text = utils.web.getUrl(url)
             if 'Search not found' in text or \
                re.search(r'size="2"> Place </font>', text, re.I):
                 Weather._noLocation()
@@ -435,7 +433,7 @@ class Weather(callbacks.Plugin):
                 m = self._backupUrl.search(text)
                 if m is not None:
                     url = 'http://www.wunderground.com' + m.group(1)
-                    text = utils.web.getUrl(url, headers=Weather.headers)
+                    text = utils.web.getUrl(url)
                 else:
                     Weather._noLocation()
             self._rss(irc, text)
@@ -450,7 +448,7 @@ class Weather(callbacks.Plugin):
             if not feed:
                 Weather._noLocation()
             feed = feed.group(1)
-            rss = utils.web.getUrl(feed, headers=Weather.headers)
+            rss = utils.web.getUrl(feed)
             info = feedparser.parse(rss)
             resp = [e['summary'] for e in info['entries']]
             resp = [s.encode('utf-8') for s in resp]
