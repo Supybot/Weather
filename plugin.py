@@ -139,8 +139,10 @@ class Weather(callbacks.Plugin):
         assert unit == unit.upper()
         assert temp == float(temp)
         default = conf.get(conf.supybot.plugins.Weather.temperatureUnit, chan)
-        if unitAbbrevs[unit] == default:
-            # Short circuit if we're the same unit as the default.
+        convert = conf.get(conf.supybot.plugins.Weather.convert, chan)
+        # Short circuit if we're the same unit as the default or no conversion
+        # has been requested
+        if unitAbbrevs[unit] == default or not convert:
             return format('%0.1f%s%s', temp, deg, unit)
         temp = Weather._toCelsius(temp, unit)
         unit = 'C'
@@ -207,14 +209,10 @@ class Weather(callbacks.Plugin):
         city = utils.web.htmlToText(city.strip())
         state = utils.web.htmlToText(state.strip())
         temp = self._hamTemp.search(html)
-        convert = self.registryValue('convert', msg.args[0])
         if temp is not None:
             (temp, deg, unit) = temp.groups()
             deg = utils.web.htmlToText(deg)
-            if convert:
-                temp = self._getTemp(float(temp), deg, unit, msg.args[0])
-            else:
-                temp = deg.join((temp, unit))
+            temp = self._getTemp(float(temp), deg, unit, msg.args[0])
         conds = self._hamCond.search(html)
         if conds is not None:
             conds = conds.group(1)
@@ -223,23 +221,20 @@ class Weather(callbacks.Plugin):
         if chill is not None:
             chill = chill.group(1)
             chill = utils.web.htmlToText(chill)
-            if convert:
-                tempsplit = self._temp.search(chill)
-                if tempsplit:
-                    (chill, deg, unit) = tempsplit.groups()
-                    chill = self._getTemp(float(chill), deg, unit,msg.args[0])
+            tempsplit = self._temp.search(chill)
+            if tempsplit:
+                (chill, deg, unit) = tempsplit.groups()
+                chill = self._getTemp(float(chill), deg, unit,msg.args[0])
             if float(chill[:-2]) < float(temp[:-2]):
                 index = format(' (Wind Chill: %s)', chill)
         heat = self._hamHeat.search(html)
         if heat is not None:
             heat = heat.group(1)
             heat = utils.web.htmlToText(heat)
-            if convert:
-                tempsplit = self._temp.search(heat)
-                if tempsplit:
-                    (heat, deg, unit) = tempsplit.groups()
-                    if convert:
-                        heat= self._getTemp(float(heat), deg, unit,msg.args[0])
+            tempsplit = self._temp.search(heat)
+            if tempsplit:
+                (heat, deg, unit) = tempsplit.groups()
+                heat= self._getTemp(float(heat), deg, unit,msg.args[0])
             if float(heat[:-2]) > float(temp[:-2]):
                 index = format(' (Heat Index: %s)', heat)
         if temp and conds and city and state:
@@ -298,14 +293,10 @@ class Weather(callbacks.Plugin):
         conds = self._cnnCond.search(text)
         humidity = self._cnnHumid.search(text)
         wind = self._cnnWind.search(text)
-        convert = self.registryValue('convert', msg.args[0])
         if location and temp:
             (temp, deg) = temp.groups()
             unit = 'F'
-            if convert:
-                temp = self._getTemp(float(temp), deg, unit, msg.args[0])
-            else:
-                temp = deg.join((temp, unit))
+            temp = self._getTemp(float(temp), deg, unit, msg.args[0])
             resp = [format('The current temperature in %s is %s.',
                            location, temp)]
             if conds is not None:
@@ -384,14 +375,9 @@ class Weather(callbacks.Plugin):
                 value = map(getText, v)
                 info[k] = ' '.join(value)
             temp = info['Temperature']
-            convert = conf.get(conf.supybot.plugins.Weather.convert,
-                               msg.args[0])
             if location and temp:
                 (temp, deg, unit) = temp.split()[3:] # We only want temp format
-                if convert:
-                    temp= Weather._getTemp(float(temp), deg, unit, msg.args[0])
-                else:
-                    temp = deg.join((temp, unit))
+                temp = Weather._getTemp(float(temp), deg, unit, msg.args[0])
                 resp = ['The current temperature in %s is %s (%s).' %\
                         (location, temp, time)]
                 conds = info['Conditions']
@@ -404,11 +390,7 @@ class Weather(callbacks.Plugin):
                 # of the wrong size.
                 try:
                     (dew, deg, unit) = info['Dew Point'].split()[3:]
-                    if convert:
-                        dew = Weather._getTemp(float(dew), deg,
-                                               unit, msg.args[0])
-                    else:
-                        dew = deg.join((dew, unit))
+                    dew = Weather._getTemp(float(dew), deg, unit, msg.args[0])
                     resp.append('Dew Point: %s.' % dew)
                 except (ValueError, KeyError):
                     pass
@@ -419,11 +401,8 @@ class Weather(callbacks.Plugin):
                     pass
                 try:
                     (chill, deg, unit) = info['Windchill'].split()[3:]
-                    if convert:
-                        chill = Weather._getTemp(float(chill), deg,
-                                                 unit, msg.args[0])
-                    else:
-                        dew = deg.join((chill, unit))
+                    chill = Weather._getTemp(float(chill), deg,
+                                             unit, msg.args[0])
                     resp.append('Windchill: %s.' % chill)
                 except (ValueError, KeyError):
                     pass
