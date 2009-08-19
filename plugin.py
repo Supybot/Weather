@@ -329,10 +329,8 @@ class Weather(callbacks.Plugin):
             if 'Place: Temperature' in text:
                 m = self._backupUrl.search(text)
                 if m is not None:
-                    url = 'http://www.wunderground.com' + m.group(1)
+                    url = 'http://mobile.wunderground.com' + m.group(1)
                     text = utils.web.getUrl(url)
-                    self._rss(irc, text)
-                    return
             severe = ''
             m = self._wunderSevere.search(text)
             if m:
@@ -415,9 +413,14 @@ class Weather(callbacks.Plugin):
 
         _rsswunderUrl = 'http://www.wunderground.com/cgi-bin/findweather/' \
                         'getForecast?query=%s'
-        _rsswunderfeed = re.compile(r'<link rel="alternate".*href="([^"]+)" */?>', re.I)
-        _rsswunderSevere = re.compile(r'font color="?#ff0000"?><b>([^<]+)<',
-                                      re.I)
+        _rsswunderfeed = re.compile(
+            r'<link rel="alternate".*href="([^"]+)" */?>', re.I)
+        _rsswunderSevere = re.compile(
+            r'font color="?#ff0000"?><b>([^<]+)<', re.I)
+        _rsswunderLocation = re.compile(
+            r'<title>(?:(.*) Weather from Weather Underground|'
+            r'Weather Underground - (.*))</title>', re.I)
+        _rsswunderForecastDate = re.compile(r'Forecast for (.*) as of', re.I)
         def rss(self, irc, msg, args, loc):
             """<US zip code | US/Canada city, state | Foreign city, country>
 
@@ -429,7 +432,7 @@ class Weather(callbacks.Plugin):
             if 'Search not found' in text or \
                re.search(r'size="2"> Place </font>', text, re.I):
                 Weather._noLocation()
-            if 'Search results for' in text:
+            if 'Search Results' in text:
                 m = self._backupUrl.search(text)
                 if m is not None:
                     url = 'http://www.wunderground.com' + m.group(1)
@@ -440,7 +443,7 @@ class Weather(callbacks.Plugin):
         rss = wrap(rss, ['text'])
 
         def _rss(self, irc, text):
-            severe = ''
+            severe = None
             m = self._rsswunderSevere.search(text)
             if m:
                 severe = ircutils.bold(m.group(1))
@@ -452,10 +455,22 @@ class Weather(callbacks.Plugin):
             rss = self._formatSymbols(rss)
             rss = rss.replace(":", ": ")
             rss = rss.replace(":  ", ": ")
+            resp = []
+            location = self._rsswunderLocation.search(rss)
+            if location is not None:
+                title = filter(None, location.groups())
+                if title:
+                    resp.append('Weather for %s' % title[0])
             info = feedparser.parse(rss)
-            resp = [e['summary'] for e in info['entries']]
-            resp = [s.encode('utf-8') for s in resp]
-            resp.append(severe)
+            for e in info['entries']:
+                d = self._rsswunderForecastDate.search(e['title'])
+                if d is not None:
+                    resp.append(d.group(1) + ' - Conditions: ' + e['summary'])
+                else:
+                    resp.append(e['summary'])
+            resp = [s.encode('utf-8').rtrim('.') for s in resp]
+            if severe is not None:
+                resp.append(severe)
             irc.reply(utils.web.htmlToText('; '.join(resp)))
 
         def _formatSymbols(self, text):
