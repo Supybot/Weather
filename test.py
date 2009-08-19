@@ -37,9 +37,9 @@ class WeatherTestCase(PluginTestCase):
             self.assertNotError('ham 43221')
             self.assertNotRegexp('ham Paris, FR', 'Virginia')
             self.assertError('ham alsdkfjasdl, asdlfkjsadlfkj')
-            self.assertNotError('ham London, uk')
-            self.assertNotError('ham London, UK')
-            self.assertNotError('ham Munich, de')
+            self.assertNotError('ham London, gb')
+            self.assertNotError('ham London, GB')
+            self.assertNotError('ham Munich, germany')
             self.assertNotError('ham Tucson, AZ')
             # "Multiple locations found" test
             self.assertNotError('ham sandwich')
@@ -51,7 +51,7 @@ class WeatherTestCase(PluginTestCase):
             self.assertError('cnn alsdkfjasdl, asdlfkjsadlfkj')
             self.assertNotError('cnn London, uk')
             self.assertNotError('cnn London, UK')
-            self.assertNotError('cnn Munich, de')
+            self.assertNotError('cnn Nurnberg, de')
             self.assertNotError('cnn Tucson, AZ')
 
         def testWunder(self):
