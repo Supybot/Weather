@@ -241,7 +241,7 @@ class Weather(callbacks.Plugin):
             s = format('The current temperature in %s, %s is %s%s. '
                        'Conditions: %s.',
                        city, state, temp, index, conds)
-            irc.reply(s)
+            irc.reply(s.decode('latin1').encode('utf-8'))
         else:
             irc.errorPossibleBug('The format of the page was odd.')
     ham = wrap(ham, ['text'])
@@ -337,7 +337,7 @@ class Weather(callbacks.Plugin):
             m = self._wunderSevere.search(text)
             if m:
                 severe = ircutils.bold(format('  %s', m.group(1)))
-            text = text.replace("&#176;", "\xb0") # needed as the overridden htmlToText function doesn't replace it
+            text = self._formatSymbols(text)
             soup = BeautifulSoup.BeautifulSoup()
             soup.feed(text)
             # Get the table with all the weather info
@@ -408,7 +408,7 @@ class Weather(callbacks.Plugin):
                     resp.append('Pressure: %s.' % info['Pressure'])
                 resp.append(severe)
                 resp = map(utils.web.htmlToText, resp)
-                irc.reply(' '.join(resp))
+                irc.reply(' '.join(resp).decode('latin1').encode('utf-8'))
             else:
                 Weather._noLocation()
         wunder = wrap(wunder, ['text'])
@@ -449,11 +449,21 @@ class Weather(callbacks.Plugin):
                 Weather._noLocation()
             feed = feed.group(1)
             rss = utils.web.getUrl(feed)
+            rss = self._formatSymbols(rss)
+            rss = rss.replace(":", ": ")
+            rss = rss.replace(":  ", ": ")
             info = feedparser.parse(rss)
             resp = [e['summary'] for e in info['entries']]
             resp = [s.encode('utf-8') for s in resp]
             resp.append(severe)
             irc.reply(utils.web.htmlToText('; '.join(resp)))
+
+        def _formatSymbols(self, text):
+            text = text.replace("&amp;", "&")
+            text = text.replace("&#176;", "&deg;")
+            text = text.replace(" &deg; ", "&deg;")
+            text = text.replace("&deg;", "\xb0")
+            return text
 
 Class = Weather
 
