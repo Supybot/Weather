@@ -29,7 +29,6 @@
 
 import re
 
-import rssparser
 # Specifically use our local copy since later versions changed their interface
 # and (depending on the version) don't work as well
 from local import BeautifulSoup
@@ -39,6 +38,13 @@ import supybot.utils as utils
 from supybot.commands import *
 import supybot.ircutils as ircutils
 import supybot.callbacks as callbacks
+
+try:
+    import feedparser
+except ImportError:
+    raise callbacks.Error, \
+            'You need the feedparser module installed to use this plugin.  ' \
+            'Download the module at <http://www.feedparser.org/>.'
 
 simplejson = None
 
@@ -484,8 +490,7 @@ class Weather(callbacks.Plugin):
 
         _rsswunderUrl = 'http://www.wunderground.com/cgi-bin/findweather/' \
                         'getForecast?query=%s'
-        _rsswunderfeed = re.compile(r'<link rel="alternate".*href="([^"]+)">',
-                                    re.I)
+        _rsswunderfeed = re.compile(r'<link rel="alternate".*href="([^"]+)" */?>', re.I)
         _rsswunderSevere = re.compile(r'font color="?#ff0000"?><b>([^<]+)<',
                                       re.I)
         def rss(self, irc, msg, args, loc):
@@ -519,7 +524,7 @@ class Weather(callbacks.Plugin):
                 Weather._noLocation()
             feed = feed.group(1)
             rss = utils.web.getUrl(feed, headers=Weather.headers)
-            info = rssparser.parse(rss)
+            info = feedparser.parse(rss)
             resp = [e['summary'] for e in info['entries']]
             resp = [s.encode('utf-8') for s in resp]
             resp.append(severe)
