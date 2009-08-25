@@ -59,7 +59,8 @@ try:
     # Luckily, the 3rd party json module has a different interface so we test
     # to make sure we aren't using it.
     if simplejson is None or hasattr(simplejson, 'read'):
-        import simplejson
+        simplejson = utils.python.universalImport('simplejson',
+                                                  'local.simplejson')
 except ImportError:
     raise callbacks.Error, \
             'You need Python2.6 or the simplejson module installed to use ' \
