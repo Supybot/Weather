@@ -40,7 +40,7 @@ import supybot.ircutils as ircutils
 import supybot.callbacks as callbacks
 
 try:
-    import feedparser
+    feedparser = utils.python.universalImport('feedparser', 'local.feedparser')
 except ImportError:
     raise callbacks.Error, \
             'You need the feedparser module installed to use this plugin.  ' \
