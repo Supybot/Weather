@@ -469,7 +469,7 @@ class Weather(callbacks.Plugin):
                     resp.append(d.group(1) + ' - Conditions: ' + e['summary'])
                 else:
                     resp.append(e['summary'])
-            resp = [s.encode('utf-8').rtrim('.') for s in resp]
+            resp = [s.encode('utf-8').rstrip('.') for s in resp]
             if severe is not None:
                 resp.append(severe)
             irc.reply(utils.web.htmlToText('; '.join(resp)))
